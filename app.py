@@ -1,11 +1,12 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from import simplejson as json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:test@mysql:3306/test'
 db = SQLAlchemy(app)
 exp_id=1;
- class EXP_SYS(db.Model):
+class EXP_SYS(db.Model):
     eid=db.Column(db.Integer,primary_key=true)
     name=db.Column(db.String(40),unique=true)
     email=db.Column(db.String(40),unique=true)
@@ -23,12 +24,12 @@ exp_id=1;
         self.email=email
         self.category=category
         self.description=description
-        self.link=link
+        self.link=linkp
         self.estimated_costs=estimated_costs
         self.submit_date=submit_date
         self.status=status
         self.decision_date=decision_date
-        
+
 
 
 @app.route("/")
