@@ -1,53 +1,113 @@
-from flask import Flask
+from flask import Flask, request, flash, url_for, redirect, render_template
 from flask_sqlalchemy import SQLAlchemy
-from import simplejson as json
+import simplejson as json
+from flask_api import status
+from flask import Response
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:test@mysql:3306/test'
-db = SQLAlchemy(app)
-exp_id=1;
-class EXP_SYS(db.Model):
-    eid=db.Column(db.Integer,primary_key=true)
-    name=db.Column(db.String(40),unique=true)
-    email=db.Column(db.String(40),unique=true)
-    category=db.Column(db.String(40),unique=false)
-    description=db.Column(db.String(40),unique=true)
-    link=db.Column(db.String(80),unique=false)
-    estimated_costs=db.Column(db.Integer,unique=false)
-    submit_date=db.Column(db.Date,unique=true)
-    status=db.Column(db.String(40),unique=false)
-    decision_date=db.Column(db.String(40),unique=true)
+app=Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI']='mysql+pymysql://root:test@mysql:3306/expsys'
+app.config['SECRET_KEY']='MYNAMEISANTHOONY'
 
-    def __init__(eid,name,email,category,description,link,estimated_costs,submit_date,status,decision_date):
+db=SQLAlchemy(app)
+
+class expsys(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    name=db.Column(db.String(40))
+    email=db.Column(db.String(40))
+    category=db.Column(db.String(40))
+    description=db.Column(db.String(40))
+    link=db.Column(db.String(80))
+    estimated_costs=db.Column(db.String(40))
+    submit_date=db.Column(db.String(40))
+    status=db.Column(db.String(40))
+    decision_date=db.Column(db.String(40))
+
+    def __init__(self, name,email,category,description,link,estimated_costs,submit_date,status,decision_date):
         self.name=name
-        self.eid=eid
         self.email=email
         self.category=category
         self.description=description
-        self.link=linkp
+        self.link=link
         self.estimated_costs=estimated_costs
         self.submit_date=submit_date
         self.status=status
         self.decision_date=decision_date
 
 
+@app.route('/')
+def show_all():
+   return "hello"
 
-@app.route("/")
-def hello():
-    return "Hello from Dockerized Flask App!!"
+@app.route('/v1/expenses', methods = ['GET', 'POST'])
+def expensespost():
+   if request.method == 'POST':
 
-@app.route("/v1/expenses")
-def expenses():
-    json_data=request.json;
-    db.create_all();
-    db.session.commit();
-    e=EXP_SYS(exp_id,json_data['name'],json_data['email'],json_data['category'],json_data['description00'],json_data['link'],json_data['estimated_costs'],json_data['submit_date'])
-    db.session.add(e);
-    db.session.commit();
 
-@app.route("/v1")
-def v1():
-    return "!!"
+            data=request.json
+            exp=expsys(name=data['name'],email=data['email'],category=data['category'],
+            description=data['description'],link=data['link'],estimated_costs=data['estimated_costs'],
+            submit_date=data['submit_date'],status="pending",decision_date="-")
+            db.session.add(exp)
+            db.session.commit()
+            flash('Record was successfully added')
+            queryname=data['name']
+            employee=expsys.query.filter_by(name=queryname).first()
 
-if __name__ == "__main__":
-    app.run(debug=True,host='0.0.0.0')
+            temp={
+                'id':employee.id,
+                'name':employee.name,
+                'email':employee.email,
+                'category':employee.category,
+                'description':employee.description,
+                'link':employee.link,
+                'estimated_costs':employee.estimated_costs,
+                'submit_date':employee.submit_date,
+                'status':employee.status,
+                'decision_date':employee.decision_date
+             }
+            resp=Response(response=json.dumps(temp),status="201",mimetype="application/json")
+            return resp
+
+@app.route('/v1/expenses/<int:exp_id>', methods = ['GET', 'POST','DELETE','PUT'])
+def expensesget(exp_id):
+    if request.method == 'GET':
+            employee=expsys.query.filter_by(id=exp_id).first()
+            temp={
+                'id':employee.id,
+                'name':employee.name,
+                'email':employee.email,
+                'category':employee.category,
+                'description':employee.description,
+                'link':employee.link,
+                'estimated_costs':employee.estimated_costs,
+                'submit_date':employee.submit_date,
+                'status':employee.status,
+                'decision_date':employee.decision_date
+             }
+            resp=Response(response=json.dumps(temp),status="200",mimetype="application/json")
+            return resp
+
+
+    elif request.method=='PUT':
+            data=request.json
+            employee=expsys.query.filter_by(id=exp_id).first()
+            employee.estimated_costs=data['estimated_costs']
+            db.session.commit()
+            temp={ 'estimated_costs':employee.estimated_costs}
+            resp=Response(response=json.dumps(temp),status="202",mimetype="application/json")
+            return resp
+    elif request.method == 'DELETE':
+            emp=expsys.query.filter_by(id=exp_id).first()
+            db.session.delete(emp)
+            db.session.commit()
+            resp=Response(response="NO content",status="204",mimetype="application/json")
+            return resp
+
+
+
+
+
+
+if __name__ == '__main__':
+   db.create_all()
+   app.run(debug = True)
